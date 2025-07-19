@@ -1,0 +1,1726 @@
+{
+  "name": "WomenEmpowerment_Agentic_AI_Marketing_Facebook_Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1080,
+        360
+      ],
+      "id": "728ccf5b-7cc1-40fb-84fa-ba99776796df",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "PQZmRgK3dhtVUOsj",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        140,
+        -360
+      ],
+      "id": "dca0de69-7124-46d5-86b4-0818f173e035",
+      "name": "XML"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -900,
+        -80
+      ],
+      "id": "e67d67bc-4b1a-452a-9fec-2b200f7735a6",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1c2c0ef-768c-47bc-93d8-0ae0881fce05",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "e866a71c-17a3-4d62-9497-406d2be63a03",
+              "name": "url",
+              "value": "={{ $json.link }}",
+              "type": "string"
+            },
+            {
+              "id": "6888bef8-5ed6-4374-b2d3-8e19d602e2a6",
+              "name": "author",
+              "value": "={{ $json[\"dc:creator\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "224f950b-7ab5-45c9-8ac6-19353069c018",
+              "name": "id",
+              "value": "={{ $json[\"guid\"][\"_\"].match(/^\\d+/)[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "387b38c0-ecd4-4496-80f9-5db84573d918",
+              "name": "source",
+              "value": "Reddit - r/GetMotivated",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        -360
+      ],
+      "id": "91235486-34a6-409c-995f-2475e831e197",
+      "name": "Set: Extract Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const post = items[0].json;\n\nconst usedTitles = items.slice(1)\n  .map(item => item.json.title || \"\")\n  .filter(t => t.trim() !== \"\");\n\n// Extract ID from the URL (last part after '/')\nconst idFromUrl = post.id ? post.id.split('/').pop() : \"\";\n\nreturn [{\n  json: {\n    title: post.title || \"\",\n    url: post.url || \"\",\n    author: post.author || \"\",\n    id: idFromUrl,\n    source: post.source || \"\",\n    usedTitles\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        40
+      ],
+      "id": "52a3e516-5ceb-4cdf-b52c-d54c05ddbdc8",
+      "name": "Code: Prepare for AI"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a content deduplication and motivational headline generation agent. You create catchy, inspiring headlines based on articles written by women who returned after a career break.\n\nInput:\nTitle: \"{{ $json[\"title\"] }}\"\nAuthor: \"{{ $json[\"author\"] }}\"\nSource: \"{{ $json[\"source\"] }}\"\nURL: \"{{ $json[\"url\"] }}\"\nExisting Headlines:\n{{ $json[\"usedTitles\"] }}\n\nYour Goal:\n- Create a new short, catchy, inspiring headline.\n- Make it emotionally resonant, positive, and appealing to women restarting their careers.\n- Ensure it’s social-media friendly and under 100 characters.\n- Check if it's identical or similar to any existing headline in `usedTitles`.\n\nReturn ONLY one of the following:\n\nIf the headline is new:\n{\"isNew\": true}\n<your_generated_headline>\nID: {{ $json[\"id\"] }}\n\nIf the headline is already used or too similar:\n{\"isNew\": false}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        40
+      ],
+      "id": "6e56c705-fcba-48bc-a29e-85cab702fa2e",
+      "name": "AI Deduplication Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all(); // or however you get your input\n\nconst feed = items[0].json.rss?.channel?.item || [];\n\nif (feed.length === 0) return [];\n\nconst randomEntry = feed[Math.floor(Math.random() * feed.length)];\n\nreturn [{ json: randomEntry }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        -360
+      ],
+      "id": "66bcc299-d666-4b47-95e2-5400b0989047",
+      "name": "Code: Random Entry"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6c2d8102-bcd8-481d-a459-513c078e4f22",
+              "leftValue": "={{ JSON.parse($json[\"output\"].split('\\n')[0]).isNew }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1420,
+        40
+      ],
+      "id": "9929ac4b-adfe-42b2-85b9-42da7b71ca52",
+      "name": "Is New Post?"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1agnq5Mo7CLHI_094fgkSUgDBGEWLCq7_V_cqEAM5BG4",
+          "mode": "list",
+          "cachedResultName": "UsedContentLog",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1agnq5Mo7CLHI_094fgkSUgDBGEWLCq7_V_cqEAM5BG4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1agnq5Mo7CLHI_094fgkSUgDBGEWLCq7_V_cqEAM5BG4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ new Date().toISOString().slice(0, 10) }}",
+            "Day": "={{ new Date().toLocaleDateString('en-US', { weekday: 'long' }) }}",
+            "URL": "={{ $json[\"url\"] }}",
+            "Author": "={{ $json[\"author\"] }}",
+            "Used?": "Yes",
+            "ID": "={{ $json[\"id\"] }}",
+            "Title": "={{ $json[\"title\"] }}",
+            "Source": "={{ $json.source }}",
+            "headline": "={{ $json.heading }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Day",
+              "displayName": "Day",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "URL",
+              "displayName": "URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Author",
+              "displayName": "Author",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Used?",
+              "displayName": "Used?",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "headline",
+              "displayName": "headline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "output",
+              "displayName": "output",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        2020,
+        60
+      ],
+      "id": "ede198ba-5f54-4314-997a-70fdd2ded346",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "g9MVb7f0yO4gugvQ",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "mathumqa@gmail.com",
+        "subject": "Duplicate Motivational Post Skipped",
+        "message": "=A post was skipped as it has already used headline:  Title: {{$json.title}} URL: {{$json.url}} Author: {{$json.author}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1580,
+        420
+      ],
+      "id": "b687dfb7-1127-4966-9878-0b2c0b4a12f4",
+      "name": "Send a message",
+      "webhookId": "a9933f86-f00d-4268-8b61-bb9dd8a3576d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jfzqEF29HmvCH4p0",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1820,
+        60
+      ],
+      "id": "40713e0a-883b-437c-ba98-69a8058189e8",
+      "name": "Merge for Sheet Append"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        140,
+        -100
+      ],
+      "id": "6bd6c338-d88a-448f-9aa0-cd76d3fd7a14",
+      "name": "XML1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const itemsList = items[0].json.rss?.channel?.item || [];\n\nif (itemsList.length === 0) return [];\n\nconst randomEntry = itemsList[Math.floor(Math.random() * itemsList.length)];\n\nreturn [{ json: randomEntry }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        -100
+      ],
+      "id": "67f5546b-7ec2-418f-9a2e-2e4d4305eca9",
+      "name": "Code: Random Entry1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1c2c0ef-768c-47bc-93d8-0ae0881fce05",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "e866a71c-17a3-4d62-9497-406d2be63a03",
+              "name": "url",
+              "value": "={{ $json.link }}",
+              "type": "string"
+            },
+            {
+              "id": "6888bef8-5ed6-4374-b2d3-8e19d602e2a6",
+              "name": "author",
+              "value": "={{ $json[\"dc:creator\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "224f950b-7ab5-45c9-8ac6-19353069c018",
+              "name": "id",
+              "value": "={{ $json.guid._ }}",
+              "type": "string"
+            },
+            {
+              "id": "387b38c0-ecd4-4496-80f9-5db84573d918",
+              "name": "source",
+              "value": "Medium - Career Gap",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        -100
+      ],
+      "id": "38007b20-6e75-449c-982b-08c34e302829",
+      "name": "Set: Extract Fields1"
+    },
+    {
+      "parameters": {
+        "url": " https://dtcc-connection.medium.com/feed",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "redditOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n (https://n8n.io)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -140,
+        200
+      ],
+      "id": "0cd0e0d2-644f-4ac3-8493-5f5240f029af",
+      "name": "HTTP: Medium - Women in Tech",
+      "credentials": {
+        "redditOAuth2Api": {
+          "id": "STJyO2uSFOeitZB8",
+          "name": "Reddit account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        140,
+        200
+      ],
+      "id": "cf100b22-10ce-42c7-bf89-3d359a5d1ce8",
+      "name": "XML2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const itemsList = items[0].json.rss?.channel?.item || [];\n\nif (itemsList.length === 0) return [];\n\nconst randomEntry = itemsList[Math.floor(Math.random() * itemsList.length)];\n\nreturn [{ json: randomEntry }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        200
+      ],
+      "id": "dab22785-e7be-415a-bceb-94bbdd6d43c0",
+      "name": "Code: Random Entry2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1c2c0ef-768c-47bc-93d8-0ae0881fce05",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "e866a71c-17a3-4d62-9497-406d2be63a03",
+              "name": "url",
+              "value": "={{ $json.link}}",
+              "type": "string"
+            },
+            {
+              "id": "6888bef8-5ed6-4374-b2d3-8e19d602e2a6",
+              "name": "author",
+              "value": "={{ $json[\"dc:creator\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "224f950b-7ab5-45c9-8ac6-19353069c018",
+              "name": "id",
+              "value": "={{ $json.guid._ }}",
+              "type": "string"
+            },
+            {
+              "id": "387b38c0-ecd4-4496-80f9-5db84573d918",
+              "name": "source",
+              "value": "Medium - Women in Tech",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        580,
+        200
+      ],
+      "id": "6bc00c9a-acf1-4bfc-89cf-3e598304dae3",
+      "name": "Set: Extract Fields2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        140,
+        520
+      ],
+      "id": "2d6b165e-6743-49c1-841d-84589ffbe5a0",
+      "name": "XML3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const itemsList = items[0].json.rss?.channel?.item || [];\n\nif (itemsList.length === 0) return [];\n\nconst randomEntry = itemsList[Math.floor(Math.random() * itemsList.length)];\n\nreturn [{ json: randomEntry }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        520
+      ],
+      "id": "88a5c076-94d8-431c-a806-232b0b596d4f",
+      "name": "Code: Random Entry3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1c2c0ef-768c-47bc-93d8-0ae0881fce05",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "e866a71c-17a3-4d62-9497-406d2be63a03",
+              "name": "url",
+              "value": "={{ $json.link }}",
+              "type": "string"
+            },
+            {
+              "id": "6888bef8-5ed6-4374-b2d3-8e19d602e2a6",
+              "name": "author",
+              "value": "={{ $json[\"dc:creator\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "224f950b-7ab5-45c9-8ac6-19353069c018",
+              "name": "id",
+              "value": "={{ $json[\"guid\"][\"_\"].split(\"-\").pop() }}",
+              "type": "string"
+            },
+            {
+              "id": "387b38c0-ecd4-4496-80f9-5db84573d918",
+              "name": "source",
+              "value": "Dev.to - Career Change",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        580,
+        520
+      ],
+      "id": "274c7dd6-ecb0-4403-85d5-a60af24c1529",
+      "name": "Set: Extract Fields3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const branches = [\n  'Reddit',\n  'MediumCareerGap',\n  'MediumWomenInTech',\n  'DevToCareerChange'\n];\n\nconst randomIndex = Math.floor(Math.random() * branches.length);\nconst selectedBranch = branches[randomIndex];\n\nreturn [{ json: { selectedBranch } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -680,
+        -80
+      ],
+      "id": "eed6177f-d744-4799-82fc-ea10f781fe67",
+      "name": "Pick Random Branch"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.selectedBranch }}",
+                    "rightValue": "Reddit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "cdf7f60a-9015-4e2e-93d4-fc90bf9cd2b9"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "353c078b-4f29-4f13-9b97-dda2f2436e9d",
+                    "leftValue": "={{ $json.selectedBranch }}",
+                    "rightValue": "MediumCareerGap",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "944ec815-dead-4641-8186-f3518204e42d",
+                    "leftValue": "={{ $json.selectedBranch }}",
+                    "rightValue": "MediumWomenInTech",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "9c1c8f64-bd5f-4a50-8b68-ebf92a4e6ee5",
+                    "leftValue": "={{ $json.selectedBranch }}",
+                    "rightValue": "DevToCareerChange",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -460,
+        -100
+      ],
+      "id": "ccd8c2fc-8616-4e84-a8da-a48919980d18",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $json[\"output\"];\nconst lines = output.split('\\n');\nconst heading = lines[1];  // second line is the heading\nreturn [\n  {\n    json: {\n      heading\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1640,
+        -40
+      ],
+      "id": "0f0a547d-5192-4eb0-8ad9-807aa56d5b3f",
+      "name": "extract Heading"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1580,
+        200
+      ],
+      "id": "8153075a-74c0-4323-acb3-5ebac56044d6",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI Visual Prompt Engineer.\nGiven the following headline:\n\"{{ $json[\"headline\"] }}\"\n\nCreate a short, visually rich image generation prompt (under 80 words) for tools like DALL·E or Stable Diffusion.\n\nRequirements:\n\nBase the visual scene on the meaning or metaphor of the headline\n\nDepict only confident, empowered women (no men or children)\n\nInclude objects, environment, mood, lighting, and atmosphere\n\nAvoid brand names or specific celebrities\n\nOutput only the image generation prompt, no explanations or extra text",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        60
+      ],
+      "id": "dbbf5d13-0505-411c-9b52-0fc9e541882b",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2240,
+        220
+      ],
+      "id": "fc8c8fb7-736e-4775-921d-3c132bf52b85",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "PQZmRgK3dhtVUOsj",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"inputs\": \"={{ $json[\"output\"] }}\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2600,
+        300
+      ],
+      "id": "8b4e4e5a-100a-4ad6-a796-731244239632",
+      "name": "ImageGeneration",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "hnIVRN8mlIf8JnVN",
+          "name": "Bearer Auth account"
+        },
+        "httpHeaderAuth": {
+          "id": "Furxm1Ry5ALz834d",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const base64Image = $input.first().json.data;  // get base64 string\n\n// Convert base64 string to binary buffer\nconst buffer = Buffer.from(base64Image, 'base64');\n\n// Return with binary data named \"data\"\nreturn [\n  {\n    json: {},\n    binary: {\n      data: {\n        data: buffer,           // binary buffer here\n        mimeType: 'image/png',  // set correct mime type\n        fileName: 'image.png'   // file name to send\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2780,
+        300
+      ],
+      "id": "965a561f-7e82-48d5-8d74-8a6433da1f36",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "-4988831457",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "={{$node[\"Caption Generator\"].json[\"text\"] || $node[\"Caption Generator\"].json[\"output\"]}}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3720,
+        140
+      ],
+      "id": "643fbd7c-7bdc-4a06-9dd7-6e7f0653c0a5",
+      "name": "Send a photo message",
+      "webhookId": "973b04cf-a3e7-4d8a-a562-ba409df746b5",
+      "credentials": {
+        "telegramApi": {
+          "id": "rd7G2xCDLvmxM0MV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a creative copywriter. Write a short, catchy, and empowering caption (15–25 words) in simple, plain English.\n\nThe caption is for an image that shows a woman overcoming struggles and shining with confidence.\n\nMake the caption relatable, modern, and uplifting — something that motivates women to restart their careers, stay strong, and believe in themselves.\n\nThe last line must include:\nRestart. Rebuild. Rise with NumpyNinja (rise.numpyninja.com)\n\nOutput only the caption text — no extra words or formatting.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        -140
+      ],
+      "id": "f7ea092f-5783-4b30-8ec8-0575fe35b77f",
+      "name": "Caption Generator"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        20
+      ],
+      "id": "8d0d2b89-a775-4a18-a232-57e1c3149f39",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "PQZmRgK3dhtVUOsj",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3100,
+        0
+      ],
+      "id": "25832de3-ae8f-4cce-b457-6c5e1c1e891b",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "url": "https://www.careershifters.org/feed.xml",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "redditOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n (https://n8n.io)"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -140,
+        -360
+      ],
+      "id": "1b9c65e4-1253-40f8-aaff-8179c1ac2f1e",
+      "name": "HTTP : Careershifters",
+      "credentials": {
+        "redditOAuth2Api": {
+          "id": "STJyO2uSFOeitZB8",
+          "name": "Reddit account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Real stories of people (especially women) who shifted careers mid-life, many after a break"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        -460
+      ],
+      "id": "dde8a921-4f36-4db1-8a45-87a84afffebb",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "url": "https://medium.com/feed/tag/career-comeback",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n (https://n8n.io)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -140,
+        -100
+      ],
+      "id": "f7d34686-6b0b-4244-b887-a6ed80ed9a95",
+      "name": "HTTP: Medium Career Comeback"
+    },
+    {
+      "parameters": {
+        "content": "Personal blogs and motivational stories from women across the world."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        -160
+      ],
+      "id": "803a96b5-8883-4195-bb45-ada39bf7cf66",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "url": "https://womenincloud.com/feed",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n (https://n8n.io)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -140,
+        520
+      ],
+      "id": "c247a19f-c6b9-428a-9529-da21bda5f66e",
+      "name": "HTTP: WomenwhoCodeBlog"
+    },
+    {
+      "parameters": {
+        "content": "Tech-focused community blog with stories, career advice, and return-to-work content."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -180,
+        440
+      ],
+      "id": "9b31b96a-9593-422d-841f-950fcba84e9c",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Focuses on organizational practices aiding women to return to work."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        140
+      ],
+      "id": "78f99d49-aef7-44db-9bd6-3a5700637ac8",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "Team3_WomenEmpowerment_Marketing",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        3040,
+        300
+      ],
+      "id": "ef8fefb6-96da-4989-a17b-bdc65a5c75c7",
+      "name": "Postgres PGVector Store",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "PETRlSpZ64ttMNgN",
+          "name": "Neon - Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/embedding-001"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        3040,
+        480
+      ],
+      "id": "030ddf16-128d-44e4-8aaa-503eaec64d23",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "PQZmRgK3dhtVUOsj",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        3180,
+        460
+      ],
+      "id": "541d7171-0948-4a99-ba7e-164fa6d51757",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM Team3_WomenEmpowerment_Marketing",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3420,
+        300
+      ],
+      "id": "985168ec-0940-4a2a-9798-f34ac95aadde",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "PETRlSpZ64ttMNgN",
+          "name": "Neon - Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "🎯 Goal:\nTo empower women returning to the workforce by automating the daily creation and sharing of personalized, relevant, and AI-curated upskilling content using a fully agentic AI workflow in n8n.",
+        "width": 1760
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        660,
+        -880
+      ],
+      "id": "954ad8b8-c877-4a95-8538-bb1d5c83d0fd",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1agnq5Mo7CLHI_094fgkSUgDBGEWLCq7_V_cqEAM5BG4",
+          "mode": "list",
+          "cachedResultName": "UsedContentLog",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1agnq5Mo7CLHI_094fgkSUgDBGEWLCq7_V_cqEAM5BG4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1agnq5Mo7CLHI_094fgkSUgDBGEWLCq7_V_cqEAM5BG4/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.6,
+      "position": [
+        1240,
+        300
+      ],
+      "id": "9a4e4509-0639-4129-a3bc-162a133888c2",
+      "name": "PreviousHeadlines",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "g9MVb7f0yO4gugvQ",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "me",
+        "edge": "photos",
+        "sendBinaryData": true,
+        "binaryPropertyName": "=data",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "message",
+                "value": "={{ $json.output }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        3720,
+        -200
+      ],
+      "id": "16f3ed06-a81c-414f-93d3-b70e0013a026",
+      "name": "Facebook Graph API1",
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "sUtwMa0WJ6R73KFX",
+          "name": "Facebook Graph account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Deduplication Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML": {
+      "main": [
+        [
+          {
+            "node": "Code: Random Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Pick Random Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Extract Fields": {
+      "main": [
+        [
+          {
+            "node": "Code: Prepare for AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Deduplication Agent": {
+      "main": [
+        [
+          {
+            "node": "Is New Post?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Prepare for AI": {
+      "main": [
+        [
+          {
+            "node": "AI Deduplication Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge for Sheet Append",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Random Entry": {
+      "main": [
+        [
+          {
+            "node": "Set: Extract Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is New Post?": {
+      "main": [
+        [
+          {
+            "node": "extract Heading",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge for Sheet Append": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML1": {
+      "main": [
+        [
+          {
+            "node": "Code: Random Entry1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Random Entry1": {
+      "main": [
+        [
+          {
+            "node": "Set: Extract Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Medium - Women in Tech": {
+      "main": [
+        [
+          {
+            "node": "XML2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML2": {
+      "main": [
+        [
+          {
+            "node": "Code: Random Entry2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Random Entry2": {
+      "main": [
+        [
+          {
+            "node": "Set: Extract Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML3": {
+      "main": [
+        [
+          {
+            "node": "Code: Random Entry3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Random Entry3": {
+      "main": [
+        [
+          {
+            "node": "Set: Extract Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Random Branch": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "HTTP : Careershifters",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP: Medium Career Comeback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP: Medium - Women in Tech",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP: WomenwhoCodeBlog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Extract Fields1": {
+      "main": [
+        [
+          {
+            "node": "Code: Prepare for AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Extract Fields2": {
+      "main": [
+        [
+          {
+            "node": "Code: Prepare for AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Extract Fields3": {
+      "main": [
+        [
+          {
+            "node": "Code: Prepare for AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract Heading": {
+      "main": [
+        [
+          {
+            "node": "Merge for Sheet Append",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "ImageGeneration",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Caption Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ImageGeneration": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Postgres PGVector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Caption Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Caption Generator": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Postgres PGVector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Send a photo message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Facebook Graph API1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP : Careershifters": {
+      "main": [
+        [
+          {
+            "node": "XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Medium Career Comeback": {
+      "main": [
+        [
+          {
+            "node": "XML1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: WomenwhoCodeBlog": {
+      "main": [
+        [
+          {
+            "node": "XML3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Postgres PGVector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres PGVector Store": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Postgres PGVector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PreviousHeadlines": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Deduplication Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0e088baf-f396-4970-8632-2b85267281a7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5a84c0f311e71ba35846f28af133f9f616ac26a7cb472efcaeb87e17bbcfe7ae"
+  },
+  "id": "Uonh9a039qPCfJjb",
+  "tags": []
+}
